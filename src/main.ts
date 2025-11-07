@@ -1,7 +1,7 @@
 import './style.css';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { AudioEngine } from './components/AudioEngine';
+import { AudioEngine, AudioSource } from './components/AudioEngine';
 import { VisualizerManager } from './components/VisualizerManager';
 import { NeonBars } from './visualizers/NeonBars';
 import { HologramSphere } from './visualizers/HologramSphere';
@@ -37,6 +37,7 @@ class CyberpunkVisualizer {
   private cameraMode: 'orbit' | 'static' | 'music' = 'orbit';
   private sensitivity = 1.0;
   private mouseTrailsEnabled = false;
+  private currentAudioSource: AudioSource = 'system';
 
   private lastFrameTime = 0;
 
@@ -107,11 +108,17 @@ class CyberpunkVisualizer {
       }
     });
 
-    // Initialize audio
-    const audioInitialized = await this.audioEngine.initialize();
+    // Initialize audio with preferred source
+    const audioInitialized = await this.audioEngine.initialize(this.currentAudioSource);
     if (!audioInitialized) {
       this.showAudioError();
       return;
+    }
+
+    // Update current source based on what was actually initialized
+    const actualSource = this.audioEngine.getCurrentSource();
+    if (actualSource) {
+      this.currentAudioSource = actualSource;
     }
 
     // Initialize visualizers
@@ -193,6 +200,29 @@ class CyberpunkVisualizer {
       width: 300,
       draggable: true,
     });
+
+    // Audio source selector
+    const audioSourceOptions = ['System Audio', 'Tab Audio', 'Microphone'];
+    const audioSourceMap: AudioSource[] = ['system', 'tab', 'microphone'];
+    const currentSourceIndex = audioSourceMap.indexOf(this.currentAudioSource);
+
+    this.controlPanel.addDropdown(
+      'Audio Source',
+      audioSourceOptions,
+      currentSourceIndex >= 0 ? currentSourceIndex : 0,
+      async (index) => {
+        const newSource = audioSourceMap[index];
+        const success = await this.audioEngine.switchSource(newSource);
+        if (success) {
+          this.currentAudioSource = newSource;
+          console.log(`Switched to ${audioSourceOptions[index]}`);
+        } else {
+          console.error(`Failed to switch to ${audioSourceOptions[index]}`);
+          // Show error message
+          alert(`Failed to capture ${audioSourceOptions[index]}. Make sure to grant permissions and select an audio source.`);
+        }
+      }
+    );
 
     // Visualizer selector
     this.controlPanel.addDropdown(

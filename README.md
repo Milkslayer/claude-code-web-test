@@ -1,12 +1,19 @@
 # 🎵 Cyberpunk Audio Visualizer
 
-A high-performance, browser-based 3D audio visualizer with cyberpunk aesthetics and glassmorphic UI.
+A high-performance, browser-based 3D audio visualizer with cyberpunk aesthetics and glassmorphic UI. Features **system audio capture** to visualize music from Spotify, YouTube, games, and any application on your computer.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)
 ![Three.js](https://img.shields.io/badge/Three.js-0.160-green)
 
 ## ✨ Features
+
+### 🔊 Audio Capture
+
+- **System Audio** - Capture all audio from your computer (Spotify, YouTube, games, etc.)
+- **Tab Audio** - Capture audio from a specific browser tab
+- **Microphone** - Traditional microphone input
+- **Live Source Switching** - Change audio source on-the-fly without reloading
 
 ### 🎨 Visual Packs
 
@@ -18,6 +25,7 @@ A high-performance, browser-based 3D audio visualizer with cyberpunk aesthetics 
 
 ### 🎛️ Controls
 
+- **Audio Source Selection** - Choose between System Audio, Tab Audio, or Microphone
 - **Visualizer Selection** - Switch between 5 unique visual styles
 - **Sensitivity Control** - Adjust audio reactivity
 - **Color Palettes** - 10 cyberpunk color schemes
@@ -84,14 +92,32 @@ npm run build
 npm run preview
 ```
 
-### Audio Permissions
+### Audio Permissions & Sources
 
-On first load, the app will request microphone permissions:
+The visualizer supports three audio capture modes:
 
-1. **System Audio** (Chrome only) - Capture desktop audio
-2. **Microphone** (fallback) - Capture mic input
+#### 🎧 System Audio (Recommended)
+- **Browser:** Chrome/Edge (v94+)
+- **How it works:** Uses Chrome's `getDisplayMedia()` API with system audio flag
+- **Usage:** Select "System Audio" from the Audio Source dropdown
+- **Permissions:** On selection, Chrome will show a screen picker - click "Share audio" checkbox at the bottom
+- **Captures:** All system audio (Spotify, YouTube, games, etc.)
 
-The permission is requested **once** and remembered.
+#### 📱 Tab Audio
+- **Browser:** Chrome, Edge, Firefox
+- **How it works:** Captures audio from a browser tab
+- **Usage:** Select "Tab Audio" from the Audio Source dropdown
+- **Permissions:** Choose which tab to share audio from
+- **Captures:** Audio from the selected browser tab only
+
+#### 🎤 Microphone
+- **Browser:** All modern browsers
+- **How it works:** Standard microphone input via `getUserMedia()`
+- **Usage:** Select "Microphone" from the Audio Source dropdown
+- **Permissions:** Grant microphone access when prompted
+- **Captures:** Microphone input (music playing nearby, voice, etc.)
+
+**Note:** The app will automatically fall back to microphone if system/tab audio capture fails.
 
 ## 🏗️ Architecture
 
@@ -189,16 +215,33 @@ Configured in `AudioEngine.ts`:
 
 ## 🎯 Browser Support
 
-- ✅ Chrome/Edge (recommended) - System audio + mic
-- ✅ Firefox - Microphone only
-- ✅ Safari - Microphone only
+| Browser | System Audio | Tab Audio | Microphone |
+|---------|--------------|-----------|------------|
+| Chrome 94+ | ✅ | ✅ | ✅ |
+| Edge 94+ | ✅ | ✅ | ✅ |
+| Firefox | ❌ | ✅ | ✅ |
+| Safari | ❌ | ❌ | ✅ |
+
+**Recommended:** Chrome or Edge for full system audio support
 
 ## 🐛 Troubleshooting
 
-### Audio not working
+### System Audio not working
+- **Make sure you're using Chrome/Edge 94+**
+- When the screen picker appears, look for "Share audio" checkbox at the bottom
+- You must select "Entire Screen" or "Window" (not just a tab) to capture system audio
+- On some systems, you may need to select "Chrome Tab" and pick a music tab instead
+- Try switching to "Tab Audio" mode and selecting a tab with audio playing
+
+### Tab Audio not working
+- Ensure the tab you selected has audio playing
+- Some DRM-protected content (Netflix, etc.) may not work
+- Try a different tab (YouTube, Spotify Web Player work well)
+
+### Microphone not working
 - Check microphone permissions in browser settings
 - Reload the page after granting permissions
-- Try a different browser (Chrome recommended)
+- Try a different browser
 
 ### Low FPS
 - Performance mode activates automatically at <30 FPS

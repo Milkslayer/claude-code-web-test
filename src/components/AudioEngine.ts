@@ -1,3 +1,5 @@
+export type AudioSource = 'microphone' | 'system' | 'tab';
+
 export class AudioEngine {
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
@@ -8,48 +10,98 @@ export class AudioEngine {
   private fftSize = 2048;
   private smoothingTimeConstant = 0.8;
   private initialized = false;
-  private permissionRequested = false;
+  private currentSource: AudioSource | null = null;
 
-  async initialize(): Promise<boolean> {
-    if (this.initialized) return true;
-    if (this.permissionRequested) return false;
-
-    this.permissionRequested = true;
+  async initialize(preferredSource: AudioSource = 'system'): Promise<boolean> {
+    if (this.initialized) {
+      return true;
+    }
 
     try {
-      // Try system audio capture first (Chrome only)
-      await this.trySystemAudioCapture();
+      switch (preferredSource) {
+        case 'system':
+          await this.captureSystemAudio();
+          break;
+        case 'tab':
+          await this.captureTabAudio();
+          break;
+        case 'microphone':
+          await this.captureMicrophone();
+          break;
+      }
+      this.currentSource = preferredSource;
       return true;
     } catch (error) {
-      console.warn('System audio capture failed, falling back to microphone:', error);
+      console.error(`Failed to capture ${preferredSource} audio:`, error);
 
-      try {
-        // Fallback to microphone
-        await this.tryMicrophoneCapture();
-        return true;
-      } catch (micError) {
-        console.error('Microphone capture failed:', micError);
-        return false;
+      // Try fallbacks
+      if (preferredSource !== 'microphone') {
+        console.log('Falling back to microphone...');
+        try {
+          await this.captureMicrophone();
+          this.currentSource = 'microphone';
+          return true;
+        } catch (micError) {
+          console.error('Microphone fallback failed:', micError);
+          return false;
+        }
       }
+
+      return false;
     }
   }
 
-  private async trySystemAudioCapture(): Promise<void> {
-    // @ts-ignore - Chrome desktop capture API
-    this.stream = await navigator.mediaDevices.getUserMedia({
+  private async captureSystemAudio(): Promise<void> {
+    // Use getDisplayMedia for screen/system audio capture
+    // Chrome supports systemAudio option but it's not in TypeScript types yet
+    const constraints: any = {
+      video: false,
       audio: {
-        // @ts-ignore - Chrome-specific
-        mandatory: {
-          chromeMediaSource: 'desktop',
-        },
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
       },
-    });
+    };
+
+    // Try to enable system audio for Chrome (experimental)
+    if (constraints.audio) {
+      constraints.audio.systemAudio = 'include';
+    }
+
+    this.stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+
+    // Check if audio track was actually captured
+    const audioTracks = this.stream.getAudioTracks();
+    if (audioTracks.length === 0) {
+      throw new Error('No audio track in display capture stream');
+    }
 
     this.setupAudioNodes();
     this.initialized = true;
   }
 
-  private async tryMicrophoneCapture(): Promise<void> {
+  private async captureTabAudio(): Promise<void> {
+    // Use getDisplayMedia for tab audio capture
+    this.stream = await navigator.mediaDevices.getDisplayMedia({
+      video: false,
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+      },
+    });
+
+    // Check if audio track was actually captured
+    const audioTracks = this.stream.getAudioTracks();
+    if (audioTracks.length === 0) {
+      throw new Error('No audio track in tab capture stream');
+    }
+
+    this.setupAudioNodes();
+    this.initialized = true;
+  }
+
+  private async captureMicrophone(): Promise<void> {
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: false,
@@ -194,6 +246,18 @@ export class AudioEngine {
     return this.initialized;
   }
 
+  getCurrentSource(): AudioSource | null {
+    return this.currentSource;
+  }
+
+  async switchSource(newSource: AudioSource): Promise<boolean> {
+    // Dispose current source
+    this.dispose();
+
+    // Initialize with new source
+    return await this.initialize(newSource);
+  }
+
   dispose(): void {
     if (this.source) {
       this.source.disconnect();
@@ -208,5 +272,6 @@ export class AudioEngine {
     }
 
     this.initialized = false;
+    this.currentSource = null;
   }
 }
