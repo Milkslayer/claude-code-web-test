@@ -201,10 +201,17 @@ class CyberpunkVisualizer {
       draggable: true,
     });
 
+    this.controlPanel.addSectionHeading('Audio', 'Choose your capture source');
+
     // Audio source selector
     const audioSourceOptions = ['System Audio', 'Tab Audio', 'Microphone'];
     const audioSourceMap: AudioSource[] = ['system', 'tab', 'microphone'];
     const currentSourceIndex = audioSourceMap.indexOf(this.currentAudioSource);
+
+    const sourceStatus = this.controlPanel.addText(
+      `Listening to ${audioSourceOptions[currentSourceIndex >= 0 ? currentSourceIndex : 0]}`,
+      'text-xs uppercase tracking-[0.35em] text-white/40'
+    );
 
     this.controlPanel.addDropdown(
       'Audio Source',
@@ -215,6 +222,7 @@ class CyberpunkVisualizer {
         const success = await this.audioEngine.switchSource(newSource);
         if (success) {
           this.currentAudioSource = newSource;
+          sourceStatus.textContent = `Listening to ${audioSourceOptions[index]}`;
           console.log(`Switched to ${audioSourceOptions[index]}`);
         } else {
           console.error(`Failed to switch to ${audioSourceOptions[index]}`);
@@ -223,6 +231,8 @@ class CyberpunkVisualizer {
         }
       }
     );
+
+    this.controlPanel.addSectionHeading('Visuals', 'Shape the energy');
 
     // Visualizer selector
     this.controlPanel.addDropdown(
@@ -260,6 +270,8 @@ class CyberpunkVisualizer {
         this.scene.background = new THREE.Color(palette.background.getHex());
       }
     );
+
+    this.controlPanel.addSectionHeading('Interaction', 'How the camera responds');
 
     // Camera mode toggle
     this.controlPanel.addDropdown(
@@ -303,10 +315,12 @@ class CyberpunkVisualizer {
 
     this.controlPanel.addDivider();
 
-    this.controlPanel.addText('Keyboard Shortcuts:', 'font-semibold text-neon-cyan');
-    this.controlPanel.addText('1-5: Switch visualizers');
-    this.controlPanel.addText('C: Cycle color palettes');
-    this.controlPanel.addText('Space: Toggle pause');
+    this.controlPanel.addSectionHeading('Shortcuts', 'Control at your fingertips');
+    this.controlPanel.addList([
+      '1-5 · Switch visualizers instantly',
+      'C · Cycle color palettes',
+      'Space · Toggle pause/resume',
+    ]);
 
     this.controlPanel.mount(uiRoot);
 
@@ -319,18 +333,47 @@ class CyberpunkVisualizer {
       draggable: true,
     });
 
-    const fpsText = this.performancePanel.addText('FPS: --', 'text-lg font-bold text-neon-magenta');
-    const modeText = this.performancePanel.addText('Mode: Normal', 'text-sm');
+    this.performancePanel.addSectionHeading('Live Metrics', 'Monitor responsiveness');
+
+    const metricsGrid = document.createElement('div');
+    metricsGrid.className = 'grid grid-cols-1 gap-3 sm:grid-cols-2';
+
+    const createMetricCard = (label: string) => {
+      const card = document.createElement('div');
+      card.className = 'metric-card';
+
+      const labelEl = document.createElement('span');
+      labelEl.className = 'metric-card-label';
+      labelEl.textContent = label;
+
+      const valueEl = document.createElement('p');
+      valueEl.className = 'metric-card-value';
+      valueEl.textContent = '--';
+
+      card.appendChild(labelEl);
+      card.appendChild(valueEl);
+
+      return { card, valueEl };
+    };
+
+    const fpsMetric = createMetricCard('Frames / Sec');
+    const modeMetric = createMetricCard('Engine Mode');
+    modeMetric.valueEl.className = 'metric-card-value text-lg font-medium text-white/80';
+
+    metricsGrid.appendChild(fpsMetric.card);
+    metricsGrid.appendChild(modeMetric.card);
+
+    this.performancePanel.addCustom(metricsGrid);
 
     // Update performance display
     setInterval(() => {
       const fps = this.performanceManager.getFps();
       const profile = this.performanceManager.getProfile();
 
-      fpsText.textContent = `FPS: ${fps.toFixed(1)}`;
-      fpsText.className = fps >= 30 ? 'text-lg font-bold text-neon-cyan' : 'text-lg font-bold text-red-500';
+      fpsMetric.valueEl.textContent = fps.toFixed(1);
+      fpsMetric.valueEl.className = `metric-card-value ${fps >= 30 ? 'text-cyber-cyan' : 'text-red-400'}`;
 
-      modeText.textContent = `Mode: ${profile.performanceMode ? 'Performance' : 'Normal'}`;
+      modeMetric.valueEl.textContent = profile.performanceMode ? 'Performance Mode' : 'Normal Mode';
     }, 100);
 
     this.performancePanel.mount(uiRoot);
