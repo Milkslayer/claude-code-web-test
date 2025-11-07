@@ -7,9 +7,13 @@ import { NeonBars } from './visualizers/NeonBars';
 import { HologramSphere } from './visualizers/HologramSphere';
 import { ParticleStorm } from './visualizers/ParticleStorm';
 import { GridCity } from './visualizers/GridCity';
+import { WaveformRibbon } from './visualizers/WaveformRibbon';
 import { ThemeManager, SCENE_BG_COLOR } from './theme';
 import { PerformanceManager } from './utils/PerformanceManager';
 import { PostProcessingManager } from './utils/PostProcessingManager';
+import { BeatDetector } from './utils/BeatDetector';
+import { CameraMusicSync } from './utils/CameraMusicSync';
+import { MouseNeonTrails } from './utils/MouseNeonTrails';
 import { GlassPanel } from './ui/GlassPanel';
 
 class CyberpunkVisualizer {
@@ -21,14 +25,18 @@ class CyberpunkVisualizer {
   private themeManager: ThemeManager;
   private performanceManager: PerformanceManager;
   private postProcessingManager: PostProcessingManager | null = null;
+  private beatDetector: BeatDetector;
+  private cameraMusicSync: CameraMusicSync | null = null;
+  private mouseNeonTrails: MouseNeonTrails | null = null;
 
   private visualizers: VisualizerManager[] = [];
   private currentVisualizerIndex = 0;
   private currentVisualizer: VisualizerManager | null = null;
 
   private isPaused = false;
-  private cameraMode: 'orbit' | 'static' = 'orbit';
+  private cameraMode: 'orbit' | 'static' | 'music' = 'orbit';
   private sensitivity = 1.0;
+  private mouseTrailsEnabled = false;
 
   private lastFrameTime = 0;
 
@@ -52,6 +60,7 @@ class CyberpunkVisualizer {
     this.audioEngine = new AudioEngine();
     this.themeManager = new ThemeManager();
     this.performanceManager = new PerformanceManager();
+    this.beatDetector = new BeatDetector();
 
     this.init();
   }
@@ -75,6 +84,28 @@ class CyberpunkVisualizer {
       this.scene,
       this.camera
     );
+
+    // Setup camera music sync
+    this.cameraMusicSync = new CameraMusicSync(this.camera);
+
+    // Setup mouse neon trails
+    this.mouseNeonTrails = new MouseNeonTrails(
+      this.scene,
+      this.camera,
+      this.themeManager.getCurrentPalette()
+    );
+
+    // Setup beat detection callbacks
+    this.beatDetector.onBeat((event) => {
+      // Trigger glitch effect on strong beats
+      if (this.postProcessingManager && event.type === 'kick') {
+        this.postProcessingManager.triggerGlitch(event.energy);
+      }
+      // Notify camera sync
+      if (this.cameraMusicSync) {
+        this.cameraMusicSync.onBeat(event);
+      }
+    });
 
     // Initialize audio
     const audioInitialized = await this.audioEngine.initialize();
@@ -129,6 +160,7 @@ class CyberpunkVisualizer {
       new HologramSphere(this.scene, palette, config),
       new ParticleStorm(this.scene, palette, config),
       new GridCity(this.scene, palette, config),
+      new WaveformRibbon(this.scene, palette, config),
     ];
 
     // Initialize and show first visualizer
@@ -202,12 +234,39 @@ class CyberpunkVisualizer {
     // Camera mode toggle
     this.controlPanel.addDropdown(
       'Camera Mode',
-      ['Orbit', 'Static'],
-      this.cameraMode === 'orbit' ? 0 : 1,
+      ['Orbit', 'Static', 'Music Sync'],
+      this.cameraMode === 'orbit' ? 0 : (this.cameraMode === 'static' ? 1 : 2),
       (index) => {
-        this.cameraMode = index === 0 ? 'orbit' : 'static';
-        if (this.controls) {
-          this.controls.enabled = this.cameraMode === 'orbit';
+        if (index === 0) {
+          this.cameraMode = 'orbit';
+          if (this.controls) this.controls.enabled = true;
+          if (this.cameraMusicSync) this.cameraMusicSync.setEnabled(false);
+        } else if (index === 1) {
+          this.cameraMode = 'static';
+          if (this.controls) this.controls.enabled = false;
+          if (this.cameraMusicSync) this.cameraMusicSync.setEnabled(false);
+        } else {
+          this.cameraMode = 'music';
+          if (this.controls) {
+            this.controls.enabled = false;
+            if (this.cameraMusicSync) {
+              this.cameraMusicSync.updateBasePosition();
+              this.cameraMusicSync.setEnabled(true);
+            }
+          }
+        }
+      }
+    );
+
+    // Mouse trails toggle
+    this.controlPanel.addDropdown(
+      'Mouse Trails',
+      ['Off', 'On'],
+      this.mouseTrailsEnabled ? 1 : 0,
+      (index) => {
+        this.mouseTrailsEnabled = index === 1;
+        if (this.mouseNeonTrails) {
+          this.mouseNeonTrails.setEnabled(this.mouseTrailsEnabled);
         }
       }
     );
@@ -215,7 +274,7 @@ class CyberpunkVisualizer {
     this.controlPanel.addDivider();
 
     this.controlPanel.addText('Keyboard Shortcuts:', 'font-semibold text-neon-cyan');
-    this.controlPanel.addText('1-4: Switch visualizers');
+    this.controlPanel.addText('1-5: Switch visualizers');
     this.controlPanel.addText('C: Cycle color palettes');
     this.controlPanel.addText('Space: Toggle pause');
 
@@ -249,8 +308,8 @@ class CyberpunkVisualizer {
 
   private setupKeyboardShortcuts(): void {
     document.addEventListener('keydown', (e) => {
-      // Number keys 1-4 for visualizer selection
-      if (e.key >= '1' && e.key <= '4') {
+      // Number keys 1-5 for visualizer selection
+      if (e.key >= '1' && e.key <= '5') {
         const index = parseInt(e.key) - 1;
         if (index < this.visualizers.length) {
           this.switchVisualizer(index);
@@ -262,6 +321,9 @@ class CyberpunkVisualizer {
         const palette = this.themeManager.cyclePalette();
         if (this.currentVisualizer) {
           this.currentVisualizer.updatePalette(palette);
+        }
+        if (this.mouseNeonTrails) {
+          this.mouseNeonTrails.updatePalette(palette);
         }
         this.scene.background = new THREE.Color(palette.background.getHex());
         console.log(`Color palette: ${palette.name}`);
@@ -332,6 +394,15 @@ class CyberpunkVisualizer {
       const midLevel = this.audioEngine.getMidLevel();
       const trebleLevel = this.audioEngine.getTrebleLevel();
 
+      // Beat detection
+      this.beatDetector.detectBeat(
+        frequencyData,
+        bassLevel,
+        midLevel,
+        trebleLevel,
+        currentTime
+      );
+
       // Update visualizer
       this.currentVisualizer.update(
         frequencyData,
@@ -342,6 +413,16 @@ class CyberpunkVisualizer {
         averageVolume,
         deltaTime
       );
+
+      // Update camera music sync
+      if (this.cameraMusicSync && this.cameraMode === 'music') {
+        this.cameraMusicSync.update(deltaTime, averageVolume, bassLevel);
+      }
+    }
+
+    // Update mouse trails
+    if (this.mouseNeonTrails) {
+      this.mouseNeonTrails.update(deltaTime);
     }
 
     // Update controls

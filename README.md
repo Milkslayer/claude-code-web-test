@@ -14,18 +14,20 @@ A high-performance, browser-based 3D audio visualizer with cyberpunk aesthetics 
 2. **Hologram Sphere** - Displacement-mapped sphere with energy lines
 3. **Particle Storm** - GPU-accelerated particle system with beat detection
 4. **Grid City** - Wireframe city with amplitude-reactive buildings
+5. **Waveform Ribbon** - Real-time waveform display with dynamic ribbon mesh
 
 ### 🎛️ Controls
 
-- **Visualizer Selection** - Switch between 4 unique visual styles
+- **Visualizer Selection** - Switch between 5 unique visual styles
 - **Sensitivity Control** - Adjust audio reactivity
-- **Color Palettes** - 5 cyberpunk color schemes
-- **Camera Modes** - Orbit or static camera
+- **Color Palettes** - 10 cyberpunk color schemes
+- **Camera Modes** - Orbit, Static, or Music Sync camera
+- **Mouse Neon Trails** - Toggle interactive neon trails following mouse
 - **Real-time FPS Monitoring** - Performance tracking
 
 ### ⌨️ Keyboard Shortcuts
 
-- `1-4` - Switch between visualizers
+- `1-5` - Switch between visualizers
 - `C` - Cycle color palettes
 - `Space` - Toggle pause
 
@@ -49,6 +51,15 @@ A high-performance, browser-based 3D audio visualizer with cyberpunk aesthetics 
 - **Bloom** - Neon glow enhancement
 - **Chromatic Aberration** - RGB split effect
 - **Film Grain** - Vintage noise overlay
+- **Glitch Effect** - Beat-reactive glitch distortion (triggers on kick beats)
+- **Scanlines** - CRT screen effect overlay
+
+### 🎵 Audio Intelligence
+
+- **Beat Detection** - Real-time kick, snare, and hi-hat classification
+- **5-Band Frequency Analysis** - Sub-bass, Bass, Low-Mid, High-Mid, Treble
+- **Camera Music Sync** - Camera shake, swoop, and zoom synced to beats and bass
+- **Adaptive Thresholds** - Smart beat detection with energy history tracking
 
 ## 🚀 Getting Started
 
@@ -111,13 +122,14 @@ Three.js Scene → Post-Processing → Canvas
 ```
 src/
 ├── components/
-│   ├── AudioEngine.ts           # Audio capture & FFT
+│   ├── AudioEngine.ts           # Audio capture & 5-band FFT analysis
 │   └── VisualizerManager.ts     # Base visualizer class
 ├── visualizers/
 │   ├── NeonBars.ts              # FFT bar visualizer
 │   ├── HologramSphere.ts        # Holographic sphere
 │   ├── ParticleStorm.ts         # Particle system
-│   └── GridCity.ts              # Wireframe city
+│   ├── GridCity.ts              # Wireframe city
+│   └── WaveformRibbon.ts        # Waveform ribbon
 ├── shaders/
 │   ├── neonGlow.ts              # Glow shader
 │   └── holographicSphere.ts     # Displacement shader
@@ -125,8 +137,11 @@ src/
 │   └── GlassPanel.ts            # Glassmorphic UI component
 ├── utils/
 │   ├── PerformanceManager.ts    # FPS monitoring
-│   └── PostProcessingManager.ts # Bloom, grain, aberration
-├── theme.ts                      # Color palettes
+│   ├── PostProcessingManager.ts # Bloom, glitch, scanlines, aberration
+│   ├── BeatDetector.ts          # Beat detection & classification
+│   ├── CameraMusicSync.ts       # Music-reactive camera movement
+│   └── MouseNeonTrails.ts       # Interactive mouse trails
+├── theme.ts                      # 10 Color palettes
 ├── style.css                     # Tailwind + custom styles
 └── main.ts                       # Application entry
 ```
@@ -138,6 +153,11 @@ src/
 3. **Electric Blue** - Blue, Cyan, Mint
 4. **Toxic Green** - Green, Yellow, Mint
 5. **Blood Moon** - Red, Orange, Magenta
+6. **Night City** - Yellow, Neon Red, Cyan Blue
+7. **Neo-Tokyo** - Hot Pink, Deep Purple, Bright Cyan
+8. **Hologram Grid** - Mint Green, Sky Blue, White
+9. **Neon Storm** - Bright Magenta, Cyan, Yellow
+10. **Vaporwave Temple** - Pink, Teal, Purple
 
 ## 🔧 Configuration
 
@@ -160,7 +180,12 @@ Configured in `AudioEngine.ts`:
 
 - **FFT Size**: 2048
 - **Smoothing**: 0.8
-- **Frequency Bands**: Bass (0-10%), Mid (10-50%), Treble (50-100%)
+- **Frequency Bands** (5-band analysis):
+  - Sub-Bass: 20-60 Hz (0-3%)
+  - Bass: 60-250 Hz (3-10%)
+  - Low-Mid: 250-500 Hz (10-25%)
+  - High-Mid: 2-4 kHz (25-50%)
+  - Treble: 4+ kHz (50-100%)
 
 ## 🎯 Browser Support
 

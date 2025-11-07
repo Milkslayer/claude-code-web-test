@@ -148,6 +148,48 @@ export class AudioEngine {
     return sum / (data.length - start) / 255; // Normalized to 0-1
   }
 
+  // Enhanced 5-band frequency analysis
+  getSubBassLevel(): number {
+    const data = this.getFrequencyData();
+    // Sub bass: 20-60 Hz (first 3% of bins)
+    const range = Math.floor(data.length * 0.03);
+    let sum = 0;
+
+    for (let i = 0; i < range; i++) {
+      sum += data[i];
+    }
+
+    return sum / range / 255;
+  }
+
+  getLowMidLevel(): number {
+    const data = this.getFrequencyData();
+    // Low mids: 250-500 Hz (10-25% of bins)
+    const start = Math.floor(data.length * 0.1);
+    const end = Math.floor(data.length * 0.25);
+    let sum = 0;
+
+    for (let i = start; i < end; i++) {
+      sum += data[i];
+    }
+
+    return sum / (end - start) / 255;
+  }
+
+  getHighMidLevel(): number {
+    const data = this.getFrequencyData();
+    // High mids: 2-4 kHz (25-50% of bins)
+    const start = Math.floor(data.length * 0.25);
+    const end = Math.floor(data.length * 0.5);
+    let sum = 0;
+
+    for (let i = start; i < end; i++) {
+      sum += data[i];
+    }
+
+    return sum / (end - start) / 255;
+  }
+
   isInitialized(): boolean {
     return this.initialized;
   }

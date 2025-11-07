@@ -6,6 +6,8 @@ import {
   BloomEffect,
   ChromaticAberrationEffect,
   NoiseEffect,
+  GlitchEffect,
+  ScanlineEffect,
   BlendFunction,
 } from 'postprocessing';
 
@@ -14,8 +16,12 @@ export class PostProcessingManager {
   private bloomEffect: BloomEffect;
   private chromaticAberrationEffect: ChromaticAberrationEffect;
   private noiseEffect: NoiseEffect;
+  private glitchEffect: GlitchEffect;
+  private scanlineEffect: ScanlineEffect;
   private effectPass: EffectPass;
+  private glitchPass: EffectPass;
   private enabled = true;
+  private glitchEnabled = false;
 
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -49,15 +55,33 @@ export class PostProcessingManager {
     });
     this.noiseEffect.blendMode.opacity.value = 0.15;
 
-    // Create effect pass with all effects
+    // Create glitch effect (disabled by default, triggered by beats)
+    this.glitchEffect = new GlitchEffect({
+      delay: new THREE.Vector2(0.5, 1.0),
+      duration: new THREE.Vector2(0.1, 0.3),
+      strength: new THREE.Vector2(0.2, 0.4),
+    });
+
+    // Create scanline effect
+    this.scanlineEffect = new ScanlineEffect({
+      blendFunction: BlendFunction.OVERLAY,
+      density: 0.8,
+    });
+    this.scanlineEffect.blendMode.opacity.value = 0.1;
+
+    // Create effect pass with all effects (except glitch)
     this.effectPass = new EffectPass(
       camera,
       this.bloomEffect,
       this.chromaticAberrationEffect,
-      this.noiseEffect
+      this.noiseEffect,
+      this.scanlineEffect
     );
 
     this.composer.addPass(this.effectPass);
+
+    // Create separate pass for glitch effect (can be dynamically added/removed)
+    this.glitchPass = new EffectPass(camera, this.glitchEffect);
   }
 
   render(deltaTime: number): void {
@@ -84,6 +108,24 @@ export class PostProcessingManager {
 
   updateNoiseOpacity(opacity: number): void {
     this.noiseEffect.blendMode.opacity.value = opacity;
+  }
+
+  triggerGlitch(intensity: number = 0.5): void {
+    // Temporarily add glitch pass
+    if (!this.glitchEnabled) {
+      this.composer.addPass(this.glitchPass);
+      this.glitchEnabled = true;
+
+      // Remove after short duration
+      setTimeout(() => {
+        this.composer.removePass(this.glitchPass);
+        this.glitchEnabled = false;
+      }, 100 + intensity * 200);
+    }
+  }
+
+  updateScanlineOpacity(opacity: number): void {
+    this.scanlineEffect.blendMode.opacity.value = opacity;
   }
 
   setSize(width: number, height: number): void {
