@@ -21,24 +21,37 @@ export class GlassPanel {
     this.element.style.left = `${config.x}px`;
     this.element.style.top = `${config.y}px`;
     this.element.style.width = `${config.width}px`;
-    this.element.style.padding = '20px';
+    this.element.style.padding = '24px';
     this.element.style.zIndex = '1000';
+
+    const accentBar = document.createElement('div');
+    accentBar.className = 'panel-accent-bar';
+    this.element.appendChild(accentBar);
 
     // Create header
     this.headerElement = document.createElement('div');
-    this.headerElement.className = 'mb-4 pb-3 border-b border-white/20';
+    this.headerElement.className = 'panel-header';
     if (config.draggable) {
       this.headerElement.className += ' drag-handle';
     }
 
     const title = document.createElement('h2');
-    title.className = 'text-xl font-bold text-neon-cyan';
+    title.className = 'panel-title';
     title.textContent = config.title;
-    this.headerElement.appendChild(title);
+
+    const pulse = document.createElement('span');
+    pulse.className = 'panel-header-pulse';
+
+    const headerContent = document.createElement('div');
+    headerContent.className = 'panel-header-content';
+    headerContent.appendChild(title);
+    headerContent.appendChild(pulse);
+
+    this.headerElement.appendChild(headerContent);
 
     // Create content container
     this.contentElement = document.createElement('div');
-    this.contentElement.className = 'space-y-4';
+    this.contentElement.className = 'panel-content';
 
     this.element.appendChild(this.headerElement);
     this.element.appendChild(this.contentElement);
@@ -81,10 +94,10 @@ export class GlassPanel {
 
   addControl(label: string, control: HTMLElement): void {
     const controlGroup = document.createElement('div');
-    controlGroup.className = 'flex flex-col gap-2';
+    controlGroup.className = 'panel-control-group';
 
     const labelElement = document.createElement('label');
-    labelElement.className = 'text-sm text-white/80 font-medium';
+    labelElement.className = 'panel-control-label';
     labelElement.textContent = label;
 
     controlGroup.appendChild(labelElement);
@@ -117,7 +130,7 @@ export class GlassPanel {
     slider.max = max.toString();
     slider.value = value.toString();
     slider.step = step.toString();
-    slider.className = 'slider-cyber w-full';
+    slider.className = 'slider-cyber panel-slider';
 
     slider.addEventListener('input', () => {
       onChange(parseFloat(slider.value));
@@ -134,8 +147,7 @@ export class GlassPanel {
     onChange: (index: number) => void
   ): HTMLSelectElement {
     const select = document.createElement('select');
-    select.className = 'w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white';
-    select.className += ' focus:outline-none focus:border-cyber-cyan transition-colors';
+    select.className = 'panel-select';
 
     options.forEach((option, index) => {
       const optionElement = document.createElement('option');
@@ -155,15 +167,55 @@ export class GlassPanel {
 
   addText(text: string, className = ''): HTMLParagraphElement {
     const p = document.createElement('p');
-    p.className = `text-white/80 text-sm ${className}`;
+    p.className = `panel-text ${className}`;
     p.textContent = text;
     this.contentElement.appendChild(p);
     return p;
   }
 
+  addSectionHeading(title: string, subtitle?: string): HTMLDivElement {
+    const container = document.createElement('div');
+    container.className = 'panel-section-heading';
+
+    const heading = document.createElement('h3');
+    heading.className = 'panel-section-title';
+    heading.textContent = title;
+    container.appendChild(heading);
+
+    if (subtitle) {
+      const sub = document.createElement('p');
+      sub.className = 'panel-section-subtitle';
+      sub.textContent = subtitle;
+      container.appendChild(sub);
+    }
+
+    this.contentElement.appendChild(container);
+    return container;
+  }
+
+  addList(items: string[], className = ''): HTMLUListElement {
+    const list = document.createElement('ul');
+    list.className = `panel-list ${className}`.trim();
+
+    items.forEach((item) => {
+      const li = document.createElement('li');
+      li.className = 'panel-list-item';
+      li.textContent = item;
+      list.appendChild(li);
+    });
+
+    this.contentElement.appendChild(list);
+    return list;
+  }
+
+  addCustom<T extends HTMLElement>(element: T): T {
+    this.contentElement.appendChild(element);
+    return element;
+  }
+
   addDivider(): void {
     const divider = document.createElement('div');
-    divider.className = 'border-t border-white/20 my-4';
+    divider.className = 'panel-divider';
     this.contentElement.appendChild(divider);
   }
 
