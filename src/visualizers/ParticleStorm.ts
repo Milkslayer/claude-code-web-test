@@ -6,6 +6,7 @@ export class ParticleStorm extends VisualizerManager {
   private particleSystem: THREE.Points | null = null;
   private particleCount = 10000;
   private velocities: Float32Array | null = null;
+  private originalColors: Float32Array | null = null;
   private beatThreshold = 0.6;
   private lastBeatTime = 0;
   private time = 0;
@@ -74,6 +75,9 @@ export class ParticleStorm extends VisualizerManager {
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
+    // Store original colors for brightness modulation
+    this.originalColors = new Float32Array(colors);
+
     // Create particle material
     const material = new THREE.PointsMaterial({
       size: 2,
@@ -139,9 +143,14 @@ export class ParticleStorm extends VisualizerManager {
 
       // Reset particles that go too far
       if (distance > 20) {
-        positions[i3] = (Math.random() - 0.5) * 2;
-        positions[i3 + 1] = (Math.random() - 0.5) * 2;
-        positions[i3 + 2] = (Math.random() - 0.5) * 2;
+        // Reset to a random position in a larger sphere
+        const resetRadius = Math.random() * 10;
+        const resetTheta = Math.random() * Math.PI * 2;
+        const resetPhi = Math.acos(Math.random() * 2 - 1);
+
+        positions[i3] = resetRadius * Math.sin(resetPhi) * Math.cos(resetTheta);
+        positions[i3 + 1] = resetRadius * Math.sin(resetPhi) * Math.sin(resetTheta);
+        positions[i3 + 2] = resetRadius * Math.cos(resetPhi);
 
         this.velocities[i3] = (Math.random() - 0.5) * 0.1;
         this.velocities[i3 + 1] = (Math.random() - 0.5) * 0.1;
@@ -153,11 +162,13 @@ export class ParticleStorm extends VisualizerManager {
       const frequency = frequencyData[frequencyIndex] / 255;
       sizes[i] = 1 + frequency * 4 * this.config.sensitivity;
 
-      // Pulse colors based on treble
-      const colorBrightness = 0.7 + trebleLevel * 0.3;
-      colors[i3] *= colorBrightness;
-      colors[i3 + 1] *= colorBrightness;
-      colors[i3 + 2] *= colorBrightness;
+      // Pulse colors based on treble (use original colors, don't multiply existing)
+      if (this.originalColors) {
+        const colorBrightness = 0.7 + trebleLevel * 0.3;
+        colors[i3] = this.originalColors[i3] * colorBrightness;
+        colors[i3 + 1] = this.originalColors[i3 + 1] * colorBrightness;
+        colors[i3 + 2] = this.originalColors[i3 + 2] * colorBrightness;
+      }
     }
 
     this.particleSystem.geometry.attributes.position.needsUpdate = true;
@@ -196,7 +207,7 @@ export class ParticleStorm extends VisualizerManager {
   }
 
   protected onPaletteChange(): void {
-    if (!this.particleSystem) return;
+    if (!this.particleSystem || !this.originalColors) return;
 
     const colors = this.particleSystem.geometry.attributes.color.array as Float32Array;
 
@@ -223,6 +234,11 @@ export class ParticleStorm extends VisualizerManager {
       colors[i3] = color.r;
       colors[i3 + 1] = color.g;
       colors[i3 + 2] = color.b;
+
+      // Update original colors too
+      this.originalColors[i3] = color.r;
+      this.originalColors[i3 + 1] = color.g;
+      this.originalColors[i3 + 2] = color.b;
     }
 
     this.particleSystem.geometry.attributes.color.needsUpdate = true;
@@ -244,6 +260,7 @@ export class ParticleStorm extends VisualizerManager {
       (this.particleSystem.material as THREE.Material).dispose();
     }
     this.velocities = null;
+    this.originalColors = null;
   }
 
   getName(): string {
